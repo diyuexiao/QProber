@@ -284,7 +284,6 @@ if __name__ == "__main__":
 			if cnode in node_categories:
 				visited_cnodes.append(cnode)
 	visited_cnodes = list(set(visited_cnodes))
-	print visited_cnodes
 
 	# Build Content Summary for Database
 	print "\n\nExtracting topic content summaries..."
