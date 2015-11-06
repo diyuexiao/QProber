@@ -5,40 +5,101 @@ Diyue Xiao (dx2152)
 Mengting Wu (mw2987)
 
 b) Files Submitted
-main.py (the main program)
-root.txt (contains queries for "Root" category node)
-computers.txt (contains queries for "Computers" node)
-health.txt (contains queries for "")
-
+main.py  --- the main program
+Prober/	 --- the directory which contains queries file for all category nodes.
+README   --- the readme file
 
 c) How to run the program
 
-$ python main.py <account_key> <precision> <query>
+$ python main.py <account_key> <t_es> <t_ec> <host>
 
 <account_key> : a string which is the Bing search account key.
-<precision> :  an integer which indicates the target precision.
-<query> : a query string containing all the seach keywords. e.g. "taj mahal", "gates".
+<t_es>: a real number which is the specificity threshold (between 0 and 1).
+<t_ec>: an integer which is the coverage threshold (t_ec >= 1).
+<host>: a string which is the URL of the database to be classified.
 
 d) Internal Design 
 
-Program Structure:
-(1) Get user input from command arguments: account_key, target_precision, query.
-(2) Use account_key & query to retrive the top 10 Bing Search API results using function get_bing_results(). The function get_bing_results() has called the function parse_xml_str() to parse the returned XML string into a dictionary, then returned the translated dictionary. 
-(3) Present results to user. For each page, print its URL, title, description. Let user mark if this page is relevant or not. And calculate the page's term frequency (the times of appearance of each term) using function get_term_frequence(). 
-(4) Calculate precision = number of relevant pages / 10. If the precision is 0 or >= target_precision, we stop the program. Otherwise, we use our query-modification method expand_query()to expand query, then go to step (2).
+Part 1:
 
-e) Query-modification method
-a. Rocchio's Algorithm
-We use Rocchio's algorithm to expand query. 
+1. Important Data Structure:
 
-b. Stopwords and punctuation. 
-We download a stopwords file from website which containing words such as about, according, became, etc. Then we import this file to our program as a list. When we calculate the term frequency for a document, we firstly remove its stopwords and punctuations. Thus, when we run the Rocchio's algorithm, we prevent selecting the stopwords or punctuation as the top 2 words.
+1.1 class Node
+The 2-level categorization scheme is naturally a rooted directed tree whose nodes correpond to categories. To build tree for the 2-level categorization scheme, we define a tree node data structure "Class Node". The Node class has two attributes: name and children, where the name is the category name and the children is a list of child Node objects. The function build_categorization_scheme_tree use the Node class to build categorization tree and return the root. 
 
-c. Order of words in expanded query.
-The expanded query contains the old words and new added words. We sort the words in expanded query in descending order according to their weights calculated by the Rocchio's algorithm.
+1.2 dictionary query_dict
+The query_dict is a gloable variable in our program. It stores queries for all categories.
 
-f) Bing Seach Account Key
-ACCOUNT_KEY = '2nd9RVoLXGSiUKSJvNYBQyWVvbaCbzGIfWNSY4jNUBE='
+We retrive queries for each category from files "Probers/Root.txt", "Probers/Computers.txt", "Probers/Health.txt", and "Probers/Sports.txt". The "Probers/Root.txt" contains queries for categories "Computers", "Health", and "Spotrs". The "Probers/Computers.txt". The "Probers/Computers.txt" contains queries for categories "Hardware" and "Programming". The "Probers/Health.txt" contains queries for categories "Fitness" and "Diseases". The "Probers/Sports.txt" contains queries for categories "Basketball" and "Soccer".
+
+Then we store these queries in the query_dict where key is the category and value is a list of category's associated queries. The query_dict looks like this: 
+
+query_dict = {"Root": [...], "Computers": [...], ... , "Soccer": [...]}
+
+1.3 class SearchResult
+The SearchResult object stores the Bing search result information for each query. It has two attibutes: web_count and url_set. The web_count stores the number of matching pages for a query. The url_set contains the urls of the top-4 pages returned by the Bing API. In part 1, we use the web_count of each query of a category to compute the coverage and specificity of the database for the category. 
+
+
+2. Main Work Flow:
+
+In main.py, we firstly retrive the four command line arguments which are:
+- account_key (string): the Bing Search API accout key.
+- t_es: the estimated specificity threshold which will be used in the database classification algorithm.
+- t_ec: the estimated coverage threshold which will be used int the database classification algorithm.
+- db_url: the url of the database to be classified.
+
+Then, we call the function build_categorization_scheme_tree to build the 2-level categorization scheme tree. It returns the Node object of the root of the categorization tree. Given this root, we can traverse the tree.  
+
+After that, we read queries from files in the Probers directory and store them in the dictionary query_dict.
+
+Then, we call the function classify which implement the paper QProber's classification algorithm. This function receives (root, db_url, t_es, t_ec, Especificity("root", D)) as input arguments. According to definition in the QPrber paper, Especificity("root", D) always equal to 1. After it finishes, it returns the classification result for the database indicated by db_url. 
+
+3. Web Database Classification
+
+3.1 Theory
+
+Given a database and a classification scheme, we can assign the database to its "best" categories in the scheme according to some classification algorithm. In our program, we use the classification algorithm described in the QProber paper to classify database.
+
+The QProber algorithm classify database in a top-down method. Each database is firstly assigend to the root category. Then, we recursively traverse the lower level categories in an DFS order. For each category, we checks whether the database shold be assigned to this category. It yes, we assigned the database to this category and move on to check its children. If not, we give up this branch and go on to check the next sibling of this category. 
+
+When we decide whether to assign the database D to a given category C, we use two metrics to make a decision: Coverage(D, C) and Specificity(D, C). The Coverage(D, C) is the number of documents in category C in database D which measures the "absolute" amount of information D contains for C. While the Specificity(D, C) is defined as Coverage(D, C)/|D|, which measures how "focus" the database D is on category C. If both of these metrics are above some given threshold, we can reasonably assign the database to this category. 
+
+However, we usually cannot obtain such category-documents information for a database. Thus, we use the probing-strategy to estimate the coverage and specificity of a category, which we defined as ECoverage(D, C) and ESpecificity(D, C). For each category C, we can train a set of query probes. In our program, we obtain categories' queries from files in "Probers" category. For each query q of the category, we issue it to the database using Bing Search API and get the number of matches returned as f(q). Then we can define ECoverage(D, C) and ESpecificity(D, C) as:
+
+ECoverage(D, C) = Sum(f(q)), where each q is category C's associated queries.
+
+ESpecificity(D, C) = ESpecificity(D, Parent(C)) * ECoverage(D, C) / Sum(ECoverage(D, C_i)), where each C_i is Parent(C)'s child.
+
+To conclude, when we decide whether to assign the database D to a given category C. We assign D to C only if ECoverage(D, C) >= t_ec and ESpecificity(D, C) >= t_es.
+
+3.2 Implementation:
+
+We implement Qprober Algorithm as a recursion function classify(c, d_url, t_ec, t_es, c_es). The input argument c is a Node object and denotes the currently checking category in the top-down process. The db_url is the url of database to be classfied. The t_ec and t_es is the threshold for ECoverage and ESpecificity. The c_es is the value of ESpecificity(c, d_url).
+
+Since c is a Node object, we obtain its children by c.children. Then we compute the ECoverage for each child using function ECoverage(category, database_url). In function ECoverage, we firstly obtain the category's associated queries by query_dict[category]. Then we get matches for each query using the Bing Search API. The sum of all matches is the ECoverage for this category. 
+
+Then we compute the Sum(ECoverage(D, C_i)), where each C_i is C's child. Since we notice that when we compute the ESpecificity for each child, we all need to calcute Sum(ECoverage(D, C_i)), where each C_i is C's siblings plus itself, which is the same value.
+
+After that, we traverse it children, compute each child's espscifity using function ESpecificity(category, database_url). For child c_i, If ecoverage(c_i) >= t_ec and especificty(c_i) >= t_es, we move on to call classify(c_i, db_url, t_ec, t_es, especificty(c)).
+
+Part 2:
+	
+From Part 1, we have got the set of categories visited during the classification period, and in this part, we will generate content summary for a given database D for each of these categories by calling the method content_summary(visited_cnodes, db_url), where "visited_cnodes" are the category nodes, and "db_url" is the database to be summarized.
+
+Part 2a: Document Sampling
+
+First, we extract the document sample sample-C-D for a given database D associated with each given category node C by examining the queries for subcategories of C that were visited when classifying. Given each query and the database, we called the method request_bing_result(database, query) to get the top 4 documents returned by Bing for each of the queries. Here, we use a set data structure "existed_urls" to keep track of the urls to be retrieved for each category, thus duplicate documents can be eliminated from the document samples by checking its corresponding url before the document is actually retrieved. And we can also choose to remove the PDF/PPT files by eliminating the urls ended with ".pdf", ".ppt", or ".pptx" from the urls set for each sample-C-D.
+
+Part 2b:
+
+For each sample-C-D, we convert its urls in the sample set into the corresponding document vectors by the method "get_words_lynx(url)", where we pass a url to the function, and get a set of terms for the corresponding page returned. In get_words_lynx, we extract the page content using lynx, with texts after references or within brackets ignored, with all words converted into lowercase while the ones not in English alphabet treated as separators. And then we convert all the document vectors, containing a document's term set, within a sample-C-D into a single inverted file, which is a dictionary with key: term and value: document frequency. After computing the document frequencey for each unique term across the document sample, we sort the dictionary alphabetically by the terms and output them into the corresponding "C-D.txt" file in the format of "<word>#<frequency in the document sample>#" as the topic content summary.
+
+
+e) Bing Seach Account Key
+ACCOUNT_KEY = 'QxtM2m4wP/o9I24tpYQdjyaxY8dgRrYf4p2WrxYgWkI='
+
+f) Others
+	(1) We decide not to include multiple-word information, corresponding to multiple-word query probes, in the content summaries for Part 2.
 
 
 
