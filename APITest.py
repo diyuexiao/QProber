@@ -22,11 +22,8 @@ def request_bing_result(siteInput, queryInput):
 	xml_str = response.read()
 	#content contains the xml/json response from Bing. 
 	#print content
-	searched_info = {}
-
-	searched_info[queryInput] = parse_xml(xml_str)
-
-	return searched_info
+	result = parse_xml(xml_str)
+	return result
 
 
 

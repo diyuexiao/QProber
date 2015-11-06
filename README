@@ -1,0 +1,44 @@
+README
+
+a) Team Member
+Diyue Xiao (dx2152)
+Mengting Wu (mw2987)
+
+b) Files Submitted
+main.py (the main program)
+root.txt (contains queries for "Root" category node)
+computers.txt (contains queries for "Computers" node)
+health.txt (contains queries for "")
+
+
+c) How to run the program
+
+$ python main.py <account_key> <precision> <query>
+
+<account_key> : a string which is the Bing search account key.
+<precision> :  an integer which indicates the target precision.
+<query> : a query string containing all the seach keywords. e.g. "taj mahal", "gates".
+
+d) Internal Design 
+
+Program Structure:
+(1) Get user input from command arguments: account_key, target_precision, query.
+(2) Use account_key & query to retrive the top 10 Bing Search API results using function get_bing_results(). The function get_bing_results() has called the function parse_xml_str() to parse the returned XML string into a dictionary, then returned the translated dictionary. 
+(3) Present results to user. For each page, print its URL, title, description. Let user mark if this page is relevant or not. And calculate the page's term frequency (the times of appearance of each term) using function get_term_frequence(). 
+(4) Calculate precision = number of relevant pages / 10. If the precision is 0 or >= target_precision, we stop the program. Otherwise, we use our query-modification method expand_query()to expand query, then go to step (2).
+
+e) Query-modification method
+a. Rocchio's Algorithm
+We use Rocchio's algorithm to expand query. 
+
+b. Stopwords and punctuation. 
+We download a stopwords file from website which containing words such as about, according, became, etc. Then we import this file to our program as a list. When we calculate the term frequency for a document, we firstly remove its stopwords and punctuations. Thus, when we run the Rocchio's algorithm, we prevent selecting the stopwords or punctuation as the top 2 words.
+
+c. Order of words in expanded query.
+The expanded query contains the old words and new added words. We sort the words in expanded query in descending order according to their weights calculated by the Rocchio's algorithm.
+
+f) Bing Seach Account Key
+ACCOUNT_KEY = '2nd9RVoLXGSiUKSJvNYBQyWVvbaCbzGIfWNSY4jNUBE='
+
+
+

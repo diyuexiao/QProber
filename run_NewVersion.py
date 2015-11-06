@@ -3,8 +3,10 @@ from APITest import request_bing_result
 siteInput = "yahoo.com"
 queryInput = "avi file"
 
-searched_info = {}
-searched_info = request_bing_result(siteInput, queryInput)
+a = request_bing_result(siteInput, queryInput)
+b = request_bing_result(siteInput, "avi")
 
-print searched_info[queryInput].web_count
-print searched_info[queryInput].url_set
+print a.web_count
+print a.url_set
+print b.web_count
+print b.url_set
