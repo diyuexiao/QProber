@@ -265,6 +265,8 @@ def content_summary(visited_cnodes, database):
 			top4_page_urls = request_bing_result(database, query_l[i]).url_set
 			for url in top4_page_urls:
 				if url not in existed_urls:
+					if isinstance(url, unicode):
+						url = url.encode('ascii', 'ignore')
 					print "Getting page: %s\n\n" % url
 					existed_urls.append(url)
 					words = get_words_lynx(url)
