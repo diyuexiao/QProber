@@ -45,7 +45,8 @@ def build_categorization_scheme_tree():
 
 	return root
 
-def parse_queries(file_name):
+def parse_queries(cat_file, node_categories):
+	file_name = "Probers/" + cat_file + ".txt"
 	q_dict = {} # key: category, value: a list of queries for that category.
 	file_obj = open(file_name)
 	for line in file_obj:
@@ -57,6 +58,7 @@ def parse_queries(file_name):
 		else:
 			q_dict[category].append(query)
 	file_obj.close()
+	node_categories[cat_file] = q_dict.keys()
 	return q_dict
 
 def parse_xml(xml_str):
@@ -247,6 +249,33 @@ def get_path_list(result):
 		for path in child_paths:
 			paths.append(result[0] + '/' + path)
 	return paths
+	
+def content_summary(visited_cnodes, database):
+	for category in visited_cnodes:
+		print "Creating Content Summary for:%s" % category
+		# Get category associated queries.
+		query_l = get_sample_queries(category, visited_cnodes)
+		# Retrive top-4 pages for each query.
+		existed_urls = []
+		inverted_file = {}
+		num = len(query_l)
+		for i in range(0, num):
+			print "%s/%s" % (str(i + 1), str(num))
+			# get each query's top-4 page's urls.
+			top4_page_urls = request_bing_result(database, query_l[i]).url_set
+			for url in top4_page_urls:
+				if url not in existed_urls:
+					print "Getting page: %s\n\n" % url
+					existed_urls.append(url)
+					words = get_words_lynx(url)
+					if not words: # can't access url.
+						continue
+					for term in words:
+						if term not in inverted_file:
+							inverted_file[term] = 1
+						else:
+							inverted_file[term] += 1
+		output_file(category, database, inverted_file)
 
 if __name__ == "__main__":
 	# Get command line arguments.
@@ -260,13 +289,13 @@ if __name__ == "__main__":
 	# Define the hierachical categorization scheme's tree.
 	root = build_categorization_scheme_tree()
 
-	# build dictionary to store all categories' probe queries.
-	d1 = parse_queries("Probers/root.txt")
-	d2 = parse_queries("Probers/computers.txt")
-	d3 = parse_queries("Probers/health.txt")
-	d4 = parse_queries("Probers/sports.txt")
-	node_categories = {"Root": d1.keys(), "Computers": d2.keys(), "Health": d3.keys(), "Sports": d4.keys()}
-	query_dict = dict(d1.items() + d2.items() + d3.items() + d4.items())
+	# Build query dictionary.
+	category_files = ["Root", "Computers", "Health", "Sports"]
+	node_categories = {}
+	query_dict = {}
+	for cat_file in category_files:
+		dic = parse_queries(cat_file, node_categories)
+		query_dict = dict(query_dict.items() + dic.items())
 
 	# Get classification result and print it.
 	print "\n\nClassifying..."
@@ -287,28 +316,5 @@ if __name__ == "__main__":
 
 	# Build Content Summary for Database
 	print "\n\nExtracting topic content summaries..."
-	for category in visited_cnodes:
-		print "Creating Content Summary for:%s" % category
-		# Get category associated queries.
-		query_l = get_sample_queries(category, visited_cnodes)
+	content_summary(visited_cnodes, db_url)
 
-		# Retrive top-4 pages for each query.
-		url_l = [] # each element is a list of the top-4 urls for a query.
-		existed_urls = []
-		num = len(query_l)
-		for i in range(0, num):
-			print "%s/%s" % (str(i + 1), str(num))
-			# get each query's top-4 page's urls.
-			top4_page_urls = request_bing_result(db_url, query_l[i]).url_set
-			# remove duplicate, pdf, and ppt url.
-			for url in top4_page_urls:
-				if url in existed_urls or url.startswith('https') or url.endswith(('.ppt', '.pptx', 'pdf')):
-					top4_page_urls.remove(url)
-				else:
-					print "\n\nGetting page: %s" % url
-					existed_urls.append(url)
-			# append the top-4 list to url_l.
-			url_l.append(top4_page_urls)
-
-		# Build inverted file --- content summary for sample-categoty-database.
-		docs_to_inverted_file(category, db_url, url_l)
