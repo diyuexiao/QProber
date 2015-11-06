@@ -261,10 +261,10 @@ if __name__ == "__main__":
 	root = build_categorization_scheme_tree()
 
 	# build dictionary to store all categories' probe queries.
-	d1 = parse_queries("root.txt")
-	d2 = parse_queries("computers.txt")
-	d3 = parse_queries("health.txt")
-	d4 = parse_queries("sports.txt")
+	d1 = parse_queries("Probers/root.txt")
+	d2 = parse_queries("Probers/computers.txt")
+	d3 = parse_queries("Probers/health.txt")
+	d4 = parse_queries("Probers/sports.txt")
 	node_categories = {"Root": d1.keys(), "Computers": d2.keys(), "Health": d3.keys(), "Sports": d4.keys()}
 	query_dict = dict(d1.items() + d2.items() + d3.items() + d4.items())
 
